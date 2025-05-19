@@ -1,0 +1,43 @@
+#Gitlab YAML
+image: alpine:latest
+stages:
+  - staging
+  - deploy
+
+development:      # This job runs in the deploy staging.
+  stage: staging  # only names of stage
+  tags:
+    - shared1
+  rules:
+    - if: $CI_COMMIT_BRANCH == "development"
+  environment: development
+  script:
+    - 'command -v ssh-agent >/dev/null || ( apk add --update openssh )' 
+    #- echo "$SERVER" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - echo "$SERVER" > ~/.ssh/id_ed25519
+    - chmod 700 ~/.ssh
+    - chmod 600 ~/.ssh/id_ed25519
+    - ssh-keyscan -p xxx [please change xx into port that open for ssh] xxx.xxx.xxx.xxx [pleasechange xx into your ip] >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+    - ssh -p xx [porttobeopen xx] useridssh@xxx.xxx.xxx<pleasechangethisintoyourip> "dir" # send command dir - this is for windows ssh configuration.
+
+production:      # This job runs in the deploy production.
+  stage: deploy  # Only names of stage
+  tags:
+    - shared1
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge" && $CI_COMMIT_BRANCH == "Production"
+  environment: production
+  script:
+    - 'command -v ssh-agent >/dev/null || ( apk add --update openssh )' 
+    - eval $(ssh-agent -s)
+    #- echo "$SERVER" | tr -d '\r' | ssh-add - 
+    - mkdir -p ~/.ssh
+    - touch ~/.ssh/id_edkey
+    - chmod 700 ~/.ssh
+    - cat "$SERVER" > ~/.ssh/id_edkey
+    - ssh-keyscan -p xxx [please change xx into port that open for ssh] xxx.xxx.xxx.xxx [pleasechange xx into your ip] >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+    - ssh -i /.ssh/id_edkey -p xx [porttobeopen xx] useridssh@xxx.xxx.xxx<pleasechangethisintoyourip> "cd /data/vip-development/; git pull" #send command dir - this is for windows ssh configuration.
+
